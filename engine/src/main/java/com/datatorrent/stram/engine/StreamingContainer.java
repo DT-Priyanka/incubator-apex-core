@@ -100,6 +100,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerSt
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -1622,7 +1623,11 @@ public class StreamingContainer extends YarnContainerMain
   private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
   {
     logger.debug("handle change logger request");
-    LoggerUtil.changeLoggersLevel(request.getTargetChanges());
+    if (RequestType.SET_LOG_LEVEL.equals(request.requestType)) {
+      LoggerUtil.changeLoggersLevel(request.getTargetChanges());
+    } else if (RequestType.REMOVE_LOG_LEVEL.equals(request.requestType)) {
+      LoggerUtil.removeLoggersLevel(request.getTargetChanges().keySet());
+    }
   }
 
   private final StreamCodec<Object> nonSerializingStreamCodec = new StreamCodec<Object>()

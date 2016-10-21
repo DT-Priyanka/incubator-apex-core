@@ -268,7 +268,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
   {
     public enum RequestType
     {
-      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_LOG_LEVEL, CUSTOM
+      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_LOG_LEVEL, REMOVE_LOG_LEVEL, CUSTOM
     }
 
     private static final long serialVersionUID = 1L;

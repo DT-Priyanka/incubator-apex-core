@@ -21,10 +21,12 @@ package com.datatorrent.stram.util;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.validation.constraints.NotNull;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
@@ -205,6 +207,22 @@ public class LoggerUtil
   public static ImmutableMap<String, String> getPatternLevels()
   {
     return ImmutableMap.copyOf(Maps.transformValues(patternLevel, levelToString));
+  }
+
+  public static synchronized void removeLoggersLevel(@NotNull Set<String> loggersToRemove)
+  {
+    for (String loggerToRemove : loggersToRemove) {
+      patternLevel.remove(loggerToRemove);
+      patterns.remove(loggerToRemove);
+      @SuppressWarnings("unchecked")
+      Enumeration<Logger> loggerEnumeration = LogManager.getCurrentLoggers();
+      while (loggerEnumeration.hasMoreElements()) {
+        Logger classLogger = loggerEnumeration.nextElement();
+        if (classLogger.getName().equals(loggerToRemove)) {
+          classLogger.setLevel(null);
+        }
+      }
+    }
   }
 
   public static synchronized void changeLoggersLevel(@Nonnull Map<String, String> targetChanges)

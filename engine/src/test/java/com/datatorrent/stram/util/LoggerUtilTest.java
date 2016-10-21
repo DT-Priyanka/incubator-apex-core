@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.util;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.junit.BeforeClass;
@@ -77,6 +78,23 @@ public class LoggerUtilTest
     assertNull(levels.get("_.com.datatorrent.io.fs.*"));
     assertNull(levels.get("_.com.datatorrent.io.*"));
     assertEquals(levels.get("_.com.datatorrent.*"), "WARN");
+  }
+
+  @Test
+  public void testRemoveLogger()
+  {
+    org.slf4j.Logger sl4jLogger;
+    org.apache.log4j.Logger log4jLogger;
+    Map<String, String> changes = Maps.newHashMap();
+
+    changes.put("com.datatorrent.stram.api.*", "DEBUG");
+    LoggerUtil.changeLoggersLevel(changes);
+    sl4jLogger = LoggerFactory.getLogger("com.datatorrent.stram.api.*");
+    assertTrue(sl4jLogger.isDebugEnabled());
+
+    LoggerUtil.removeLoggersLevel(Collections.singleton("com.datatorrent.stram.api.*"));
+    log4jLogger = LogManager.getLogger("com.datatorrent.stram.api.*");
+    assertNull(log4jLogger.getLevel());
   }
 
   @Test

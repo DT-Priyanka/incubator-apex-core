@@ -135,6 +135,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHe
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.OperatorResponse;
 import com.datatorrent.stram.engine.StreamingContainer;
@@ -2805,8 +2806,18 @@ public class StreamingContainerManager implements PlanContext
   public void setLoggersLevel(Map<String, String> changedLoggers)
   {
     LOG.debug("change logger request");
-    StramToNodeChangeLoggersRequest request = new StramToNodeChangeLoggersRequest();
+    StramToNodeChangeLoggersRequest request = new StramToNodeChangeLoggersRequest(RequestType.SET_LOG_LEVEL);
     request.setTargetChanges(changedLoggers);
+    for (StreamingContainerAgent stramChildAgent : containers.values()) {
+      stramChildAgent.addOperatorRequest(request);
+    }
+  }
+
+  public void removeLoggersLevel(Map<String, String> removedLevels)
+  {
+    LOG.debug("remove logger request");
+    StramToNodeChangeLoggersRequest request = new StramToNodeChangeLoggersRequest(RequestType.REMOVE_LOG_LEVEL);
+    request.setTargetChanges(removedLevels);
     for (StreamingContainerAgent stramChildAgent : containers.values()) {
       stramChildAgent.addOperatorRequest(request);
     }

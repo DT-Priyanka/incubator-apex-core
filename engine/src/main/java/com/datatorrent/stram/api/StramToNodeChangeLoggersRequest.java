@@ -35,6 +35,11 @@ public class StramToNodeChangeLoggersRequest extends StreamingContainerUmbilical
     requestType = RequestType.SET_LOG_LEVEL;
   }
 
+  public StramToNodeChangeLoggersRequest(RequestType requestType)
+  {
+    this.requestType = requestType;
+  }
+
   public void setTargetChanges(Map<String, String> targetChanges)
   {
     this.targetChanges = targetChanges;

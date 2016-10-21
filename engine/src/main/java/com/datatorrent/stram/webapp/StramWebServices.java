@@ -124,6 +124,7 @@ public class StramWebServices
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_ALERTS = "alerts";
   public static final String PATH_LOGGERS = "loggers";
+  public static final String PATH_REMOVE_LOGGERS = "rmloggers";
   public static final String PATH_STACKTRACE = "stackTrace";
   public static final long WAIT_TIME = 5000;
   public static final long STACK_TRACE_WAIT_TIME = 1000;
@@ -937,6 +938,37 @@ public class StramWebServices
     }
 
     return response;
+  }
+
+  @POST
+  @Path(PATH_REMOVE_LOGGERS)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject removeLoggersLevel(JSONObject request)
+  {
+    init();
+    JSONObject response = new JSONObject();
+    Map<String, String> targetChanges = Maps.newHashMap();
+    try {
+      @SuppressWarnings("unchecked")
+      JSONArray loggerArray = request.getJSONArray("loggers");
+      for (int i = 0; i < loggerArray.length(); i++) {
+        JSONObject loggerNode = loggerArray.getJSONObject(i);
+        String target = loggerNode.getString("target");
+        LOG.info("removing logger level for {}", target);
+        targetChanges.put(target, null);
+      }
+
+      if (!targetChanges.isEmpty()) {
+        dagManager.removeLoggersLevel(Collections.unmodifiableMap(targetChanges));
+        //Changing the levels on Stram after sending the message to all containers.
+        LoggerUtil.removeLoggersLevel(targetChanges.keySet());
+      }
+    } catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
+    return response;
+
   }
 
   @POST
