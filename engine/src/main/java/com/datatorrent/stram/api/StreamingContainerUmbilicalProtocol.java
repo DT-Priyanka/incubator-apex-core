@@ -416,6 +416,15 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
   void reportError(String containerId, int[] operators, String msg);
 
   /**
+   * Reports an error to the app master by child container
+   *
+   * @param containerId
+   * @param operators
+   * @param msg
+   */
+  void reportError(String containerId, int[] operators, String msg, String logFileName, long offset);
+
+  /**
    * To be called periodically by child for heartbeat protocol.
    *
    * @param msg

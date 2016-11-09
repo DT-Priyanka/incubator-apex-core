@@ -420,12 +420,23 @@ public abstract class StramEvent
   {
     private String containerId;
     private String errorMessage;
+    private String logFileName;
+    private long logFileOffset;
 
     public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage)
     {
       super(operatorName, operatorId);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
+    }
+
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, String logFileName, long logFileOffset)
+    {
+      super(operatorName, operatorId);
+      this.containerId = containerId;
+      this.errorMessage = errorMessage;
+      this.logFileName = logFileName;
+      this.logFileOffset = logFileOffset;
     }
 
     @Override
@@ -452,6 +463,26 @@ public abstract class StramEvent
     public void setErrorMessage(String errorMessage)
     {
       this.errorMessage = errorMessage;
+    }
+
+    public String getLogFileName()
+    {
+      return logFileName;
+    }
+
+    public void setLogFileName(String logFileName)
+    {
+      this.logFileName = logFileName;
+    }
+
+    public long getLogFileOffset()
+    {
+      return logFileOffset;
+    }
+
+    public void setLogFileOffset(long logFileOffset)
+    {
+      this.logFileOffset = logFileOffset;
     }
 
   }
