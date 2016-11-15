@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -106,6 +107,16 @@ public class StramLocalCluster implements Runnable, Controller
 
     @Override
     public void reportError(String containerId, int[] operators, String msg)
+    {
+      try {
+        log(containerId, msg);
+      } catch (IOException ex) {
+        // ignore
+      }
+    }
+
+    @Override
+    public void reportError(String containerId, int[] operators, String msg, String logFileName, long offset)
     {
       try {
         log(containerId, msg);
