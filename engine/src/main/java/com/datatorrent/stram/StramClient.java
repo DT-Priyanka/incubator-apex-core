@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -114,7 +115,7 @@ public class StramClient
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
-  private final String log4jPropFile = "";
+  private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
   private String originalAppId;
@@ -480,9 +481,17 @@ public class StramClient
       }
 
       // Set the log4j properties if needed
+      if (dag.getMasterJVMOptions() != null) {
+        String jvmOptions = dag.getMasterJVMOptions();
+        if (jvmOptions.contains("log4j.configuration")) {
+          //TODO: fetch file name
+          log4jPropFile = StramClientUtils.getUserDTDirectory() + "/" + "log4j.props";
+        }
+      }
+
       if (!log4jPropFile.isEmpty()) {
         Path log4jSrc = new Path(log4jPropFile);
-        Path log4jDst = new Path(appPath, "log4j.props");
+        Path log4jDst = new Path(appPath, new File(log4jPropFile).getName());
         fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
         FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
         LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
@@ -491,7 +500,7 @@ public class StramClient
         log4jRsrc.setResource(ConverterUtils.getYarnUrlFromURI(log4jDst.toUri()));
         log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
         log4jRsrc.setSize(log4jFileStatus.getLen());
-        localResources.put("log4j.properties", log4jRsrc);
+        localResources.put("log4j.props", log4jRsrc);
       }
 
       if (originalAppId != null) {
@@ -539,6 +548,7 @@ public class StramClient
         classPathEnv.append(':');
         classPathEnv.append(c.trim());
       }
+      classPathEnv.append(":."); // include log4j.properties, if any
       env.put("CLASSPATH", classPathEnv.toString());
       // propagate to replace node managers user name (effective in non-secure mode)
       env.put("HADOOP_USER_NAME", UserGroupInformation.getLoginUser().getUserName());

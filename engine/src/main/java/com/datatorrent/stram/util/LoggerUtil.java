@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram.util;
 
+import java.io.File;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Map;
@@ -28,6 +29,7 @@ import javax.annotation.Nullable;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
+import org.apache.log4j.FileAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -274,5 +276,37 @@ public class LoggerUtil
       }
     }
     return ImmutableMap.copyOf(matchedClasses);
+  }
+
+  public static String getLogFileName()
+  {
+    Appender appender = LogManager.getRootLogger().getAppender("DTRFA");
+////    while (appenders.hasMoreElements()) {
+//      Appender currAppender = (Appender)appenders.nextElement();
+//      if (currAppender instanceof FileAppender) {
+//        fileAppender = (FileAppender)currAppender;
+//        break;
+//      }
+//    }
+    return appender == null ? null : ((FileAppender)appender).getFile();
+  }
+
+  public static long getLogFileOffset()
+  {
+    FileAppender fileAppender = null;
+    DelegatingLoggerRepository repo = (DelegatingLoggerRepository)LogManager.getLoggerRepository();
+    Enumeration appenders = repo.getRootLogger().getAllAppenders();
+    while (appenders.hasMoreElements()) {
+      Appender currAppender = (Appender)appenders.nextElement();
+      if (currAppender instanceof FileAppender) {
+        fileAppender = (FileAppender)currAppender;
+        break;
+      }
+    }
+    if (fileAppender != null) {
+      File logFile = new File(fileAppender.getFile());
+      return logFile.length();
+    }
+    return -1;
   }
 }

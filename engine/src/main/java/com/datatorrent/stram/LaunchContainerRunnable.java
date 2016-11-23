@@ -18,6 +18,7 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -172,6 +173,27 @@ public class LaunchContainerRunnable implements Runnable
         if (archives != null) {
           addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
         }
+        Path log4jPath = null;
+        if (dag.getMasterJVMOptions() != null) {
+          String jvmOptions = dag.getMasterJVMOptions();
+          if (jvmOptions.contains("log4j.configuration")) {
+            //TODO: fetch file name
+            String configuredAppPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
+            log4jPath = new Path(configuredAppPath + File.separator + "log4j.props");
+          }
+        }
+
+        if (log4jPath != null) {
+          FileStatus log4jFileStatus = fs.getFileStatus(log4jPath);
+          LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
+          log4jRsrc.setType(LocalResourceType.FILE);
+          log4jRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
+          log4jRsrc.setResource(ConverterUtils.getYarnUrlFromURI(log4jPath.toUri()));
+          log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
+          log4jRsrc.setSize(log4jFileStatus.getLen());
+          localResources.put("log4j.props", log4jRsrc);
+        }
+
         ctx.setLocalResources(localResources);
       }
     } catch (IOException e) {
