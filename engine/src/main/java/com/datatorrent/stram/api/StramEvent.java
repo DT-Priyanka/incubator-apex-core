@@ -218,11 +218,13 @@ public abstract class StramEvent
   public static class StartOperatorEvent extends PhysicalOperatorEvent
   {
     private String containerId;
+    private String parentErrorId;
 
-    public StartOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StartOperatorEvent(String operatorName, int operatorId, String containerId, String parentErrorId)
     {
       super(operatorName, operatorId);
       this.containerId = containerId;
+      this.parentErrorId = parentErrorId;
     }
 
     @Override
@@ -241,16 +243,27 @@ public abstract class StramEvent
       this.containerId = containerId;
     }
 
+    public String getParentErrorId()
+    {
+      return parentErrorId;
+    }
+
+    public void setParentErrorId(String parentErrorId)
+    {
+      this.parentErrorId = parentErrorId;
+    }
   }
 
   public static class StopOperatorEvent extends PhysicalOperatorEvent
   {
     private String containerId;
+    private String parentErrorId;
 
-    public StopOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StopOperatorEvent(String operatorName, int operatorId, String containerId, String parentErrorId)
     {
       super(operatorName, operatorId);
       this.containerId = containerId;
+      this.parentErrorId = parentErrorId;
     }
 
     @Override
@@ -269,6 +282,15 @@ public abstract class StramEvent
       this.containerId = containerId;
     }
 
+    public String getParentErrorId()
+    {
+      return parentErrorId;
+    }
+
+    public void setParentErrorId(String parentErrorId)
+    {
+      this.parentErrorId = parentErrorId;
+    }
   }
 
   public static class SetPhysicalOperatorPropertyEvent extends PhysicalOperatorEvent

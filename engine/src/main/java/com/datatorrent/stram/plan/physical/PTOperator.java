@@ -242,6 +242,7 @@ public class PTOperator implements java.io.Serializable
   }
 
   private volatile PTOperator.State state = State.INACTIVE;
+  private String parentErrorId;
   private final PhysicalPlan plan;
   PTContainer container;
   final LogicalPlan.OperatorMeta operatorMeta;
@@ -281,6 +282,16 @@ public class PTOperator implements java.io.Serializable
   {
     this.getPlan().getContext().writeJournal(new SetOperatorState(getId(), state));
     this.state = state;
+  }
+
+  public void setParentErrorId(String parentErrorId)
+  {
+    this.parentErrorId = parentErrorId;
+  }
+
+  public String getParentErrorId()
+  {
+    return parentErrorId;
   }
 
   /**
