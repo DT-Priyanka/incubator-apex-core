@@ -36,6 +36,7 @@ import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 
+import com.datatorrent.stram.StreamingContainerManager.RedeployInformation;
 import com.datatorrent.stram.api.StramEvent.ContainerErrorEvent;
 import com.datatorrent.stram.api.StramEvent.OperatorErrorEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
@@ -175,7 +176,12 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
       for (int operator : operators) {
         OperatorInfo operatorInfo = dagManager.getOperatorInfo(operator);
         if (operatorInfo != null) {
-          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg));
+          OperatorErrorEvent ev = new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg, -1);
+          RedeployInformation info = new  RedeployInformation();
+          info.parentEventId = ev.getId();
+          info.operatorsToStop.add(operator);
+          dagManager.getRedeployInformation().put(containerId, info); //last operator error wins, we don't want to club all operator error events as they may be due to different reasons
+          dagManager.recordEventAsync(ev);
         }
       }
     }

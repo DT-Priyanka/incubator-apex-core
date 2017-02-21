@@ -999,12 +999,12 @@ public class StreamingAppMasterService extends CompositeService
         }
 
         String containerIdStr = containerStatus.getContainerId().toString();
-        dnmgr.removeContainerAgent(containerIdStr);
-
         // record container stop event
         StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus());
         ev.setReason(containerStatus.getDiagnostics());
         dnmgr.recordEventAsync(ev);
+
+        dnmgr.removeContainerAgent(containerIdStr);
       }
 
       if (!blacklistAdditions.isEmpty()) {

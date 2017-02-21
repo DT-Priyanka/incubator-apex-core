@@ -199,11 +199,13 @@ public abstract class StramEvent
   public abstract static class PhysicalOperatorEvent extends OperatorEvent
   {
     private final int operatorId;
+    private final long parentEventId;
 
-    public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel)
+    public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel, long parentEventId)
     {
       super(operatorName, logLevel);
       this.operatorId = operatorId;
+      this.parentEventId = parentEventId;
     }
 
     public int getOperatorId()
@@ -211,6 +213,10 @@ public abstract class StramEvent
       return operatorId;
     }
 
+    public long getParentEventId()
+    {
+      return parentEventId;
+    }
   }
 
   public static class CreateOperatorEvent extends PhysicalOperatorEvent
@@ -222,7 +228,7 @@ public abstract class StramEvent
 
     public CreateOperatorEvent(String operatorName, int operatorId, LogLevel logLevel)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, -1);
     }
 
     @Override
@@ -242,7 +248,7 @@ public abstract class StramEvent
 
     public RemoveOperatorEvent(String operatorName, int operatorId, LogLevel logLevel)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, -1);
     }
 
     @Override
@@ -257,14 +263,14 @@ public abstract class StramEvent
   {
     private String containerId;
 
-    public StartOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StartOperatorEvent(String operatorName, int operatorId, String containerId, long parentEventId)
     {
-      this(operatorName, operatorId, containerId, LogLevel.INFO);
+      this(operatorName, operatorId, containerId, LogLevel.INFO, parentEventId);
     }
 
-    public StartOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel)
+    public StartOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel, long parentEventId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, parentEventId);
       this.containerId = containerId;
     }
 
@@ -290,14 +296,14 @@ public abstract class StramEvent
   {
     private String containerId;
 
-    public StopOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StopOperatorEvent(String operatorName, int operatorId, String containerId, long parentEventId)
     {
-      this(operatorName, operatorId, containerId, LogLevel.WARN);
+      this(operatorName, operatorId, containerId, LogLevel.WARN, parentEventId);
     }
 
-    public StopOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel)
+    public StopOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel, long parentEventId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, parentEventId);
       this.containerId = containerId;
     }
 
@@ -331,7 +337,7 @@ public abstract class StramEvent
 
     public SetPhysicalOperatorPropertyEvent(String operatorName, int operatorId, String propertyName, String propertyValue, LogLevel logLevel)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, -1);
       this.propertyName = propertyName;
       this.propertyValue = propertyValue;
     }
@@ -492,14 +498,14 @@ public abstract class StramEvent
     private String containerId;
     private String errorMessage;
 
-    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage)
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, long parentEventId)
     {
-      this(operatorName, operatorId, containerId, errorMessage, LogLevel.ERROR);
+      this(operatorName, operatorId, containerId, errorMessage, LogLevel.ERROR, parentEventId);
     }
 
-    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, LogLevel logLevel)
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, LogLevel logLevel, long parentEventId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, parentEventId);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
     }

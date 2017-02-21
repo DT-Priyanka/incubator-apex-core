@@ -308,6 +308,21 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
+  private Map<String, RedeployInformation> redeployInfo = new HashMap<>();
+
+  public Map<String, RedeployInformation> getRedeployInformation()
+  {
+    return redeployInfo;
+  }
+
+  public static class RedeployInformation
+  {
+    long parentEventId;
+
+    Set<Integer> operatorsToStop = new HashSet<>();
+    Set<Integer> operatorsToStart = new HashSet<>();
+  }
+
   private static class SetOperatorProperty implements Recoverable
   {
     private final String operatorName;
@@ -781,6 +796,7 @@ public class StreamingContainerManager implements PlanContext
           // container allocated but process was either not launched or is not able to phone home
           if (currentTms - sca.createdMillis > 2 * this.vars.heartbeatTimeoutMillis) {
             LOG.info("Container {}@{} startup timeout ({} ms).", c.getExternalId(), c.host, currentTms - sca.createdMillis);
+            //TODO: can add parent event id here??
             containerStopRequests.put(c.getExternalId(), c.getExternalId());
           }
         } else {
@@ -1144,6 +1160,11 @@ public class StreamingContainerManager implements PlanContext
 
     // redeploy cycle for all affected operators
     LOG.info("Affected operators {}", ctx.visited);
+
+    for (PTOperator operator : ctx.visited) {
+      redeployInfo.get(containerId).operatorsToStop.add(operator.getId());
+      redeployInfo.get(containerId).operatorsToStart.add(operator.getId());
+    }
     deploy(Collections.<PTContainer>emptySet(), ctx.visited, Sets.newHashSet(cs.container), ctx.visited);
   }
 
@@ -1181,11 +1202,6 @@ public class StreamingContainerManager implements PlanContext
     LOG.debug("Removing container agent {}", containerId);
     StreamingContainerAgent containerAgent = containers.remove(containerId);
     if (containerAgent != null) {
-      // record operator stop for this container
-      for (PTOperator oper : containerAgent.container.getOperators()) {
-        StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerId);
-        recordEventAsync(ev);
-      }
       containerAgent.container.setFinishedTime(System.currentTimeMillis());
       containerAgent.container.setState(PTContainer.State.KILLED);
       completedContainers.put(containerId, containerAgent.getContainerInfo());
@@ -1328,7 +1344,7 @@ public class StreamingContainerManager implements PlanContext
       ds = ohb.getState();
     }
 
-    LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), ds, oper.getContainer().getExternalId());
+    LOG.info("heartbeat {} {}/{} {}", oper, oper.getState(), ds, oper.getContainer().getExternalId());
 
     switch (oper.getState()) {
       case ACTIVE:
@@ -1359,13 +1375,15 @@ public class StreamingContainerManager implements PlanContext
               sca.undeployOpers.add(oper.getId());
               slowestUpstreamOp.remove(oper);
               // record operator stop event
-              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), -1));
               break;
             case FAILED:
               processOperatorFailure(oper);
               sca.undeployOpers.add(oper.getId());
               slowestUpstreamOp.remove(oper);
-              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+              long parentEventId = getStopEventParentId(oper);
+              LOG.info("*** event id: " + parentEventId);
+              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), parentEventId));
               break;
             case ACTIVE:
             default:
@@ -1375,8 +1393,10 @@ public class StreamingContainerManager implements PlanContext
         break;
       case PENDING_UNDEPLOY:
         if (ds == null) {
+          long parentEventId = getStopEventParentId(oper);
           // operator no longer deployed in container
-          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+          LOG.info("*** event id: " + parentEventId);
+          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), parentEventId));
           oper.setState(State.PENDING_DEPLOY);
           sca.deployOpers.add(oper);
         } else {
@@ -1396,7 +1416,8 @@ public class StreamingContainerManager implements PlanContext
           oper.setState(PTOperator.State.ACTIVE);
           oper.stats.lastHeartbeat = null; // reset on redeploy
           oper.stats.lastWindowIdChangeTms = clock.getTime();
-          recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId()));
+          long parentEventId = getStartEventParentId(oper);
+          recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId(), parentEventId));
         }
         break;
       default:
@@ -1405,9 +1426,36 @@ public class StreamingContainerManager implements PlanContext
           // operator was removed and needs to be undeployed from container
           sca.undeployOpers.add(oper.getId());
           slowestUpstreamOp.remove(oper);
-          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), -1));
         }
     }
+  }
+
+  private long getStopEventParentId(PTOperator oper)
+  {
+    for (RedeployInformation info : redeployInfo.values()) {
+      LOG.info("%%% to stop: " + info.operatorsToStop);
+      if (info.operatorsToStop.contains(oper.getId())) {
+        info.operatorsToStop.remove(oper.getId());
+        return info.parentEventId;
+      }
+    }
+    return -1;
+  }
+
+  private long getStartEventParentId(PTOperator oper)
+  {
+    if (getStopEventParentId(oper) != -1) {
+      for (RedeployInformation info : redeployInfo.values()) {
+        LOG.info("%%% to start: " + info.operatorsToStart);
+        if (info.operatorsToStart.contains(oper.getId())) {
+          info.operatorsToStart.remove(oper.getId());
+          return info.parentEventId;
+
+        }
+      }
+    }
+    return -1;
   }
 
   private void processOperatorFailure(PTOperator oper)
