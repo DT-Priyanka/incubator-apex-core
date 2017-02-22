@@ -53,6 +53,8 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.log4j.LogManager;
 
+import com.google.common.collect.Maps;
+
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
@@ -600,6 +602,9 @@ public class StreamingContainer extends YarnContainerMain
     }
   }
 
+  Map<Integer, Long> deployReasons = Maps.newHashMap();
+  Map<Integer, Long> unDeployReasons = Maps.newHashMap();
+
   public void heartbeatLoop() throws Exception
   {
     logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
@@ -671,10 +676,20 @@ public class StreamingContainer extends YarnContainerMain
 
           if (context.getThread() == null || context.getThread().getState() != Thread.State.TERMINATED) {
             hb.setState(DeployState.ACTIVE);
+            if (deployReasons.containsKey(hb.nodeId)) {
+              hb.setStartFailureId(deployReasons.get(hb.nodeId));
+              deployReasons.remove(hb.nodeId);
+              logger.info("%%% Setting start failureId: " + hb.getStartFailureId() + " for: " + hb.nodeId);
+            }
           } else if (failedNodes.contains(hb.nodeId)) {
             hb.setState(DeployState.FAILED);
+            if (unDeployReasons.containsKey(hb.nodeId)) {
+              hb.setStopFailureId(unDeployReasons.get(hb.nodeId));
+              //TODO: remove when state is already active??
+            }
           } else {
-            logger.debug("Reporting SHUTDOWN state because thread is {} and failedNodes is {}", context.getThread(), failedNodes);
+            logger.debug("Reporting SHUTDOWN state because thread is {} and failedNodes is {}", context.getThread(),
+                failedNodes);
             hb.setState(DeployState.SHUTDOWN);
           }
 
@@ -806,6 +821,7 @@ public class StreamingContainer extends YarnContainerMain
       logger.info("Undeploy request: {}", rsp.undeployRequest);
       processNodeRequests(false);
       undeploy(rsp.undeployRequest);
+      unDeployReasons.clear();
     }
 
     if (rsp.shutdown != null) {
@@ -895,6 +911,7 @@ public class StreamingContainer extends YarnContainerMain
     HashMap<Integer, OperatorDeployInfo> operatorMap = new HashMap<>(nodeList.size());
     for (OperatorDeployInfo o : nodeList) {
       operatorMap.put(o.id, o);
+      deployReasons.put(o.getId(), o.deployReason);
     }
     activate(operatorMap, newStreams);
   }
@@ -1439,6 +1456,9 @@ public class StreamingContainer extends YarnContainerMain
             }
             try {
               umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error));
+              for (int opId : operators) {
+                unDeployReasons.put(opId, System.currentTimeMillis());//may not work
+              }
             } catch (Exception e) {
               logger.debug("Fail to log", e);
             } finally {
@@ -1451,6 +1471,9 @@ public class StreamingContainer extends YarnContainerMain
               int[] operators = new int[]{ndi.id};
               try {
                 umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex));
+                long errorId = System.currentTimeMillis();
+                logger.info("For exception erorId: " + errorId + " operator: " + ndi.id);
+                unDeployReasons.put(ndi.id, errorId);
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
               }
@@ -1460,6 +1483,7 @@ public class StreamingContainer extends YarnContainerMain
               int[] operators = new int[]{currentdi.id};
               try {
                 umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex));
+                unDeployReasons.put(currentdi.id, System.currentTimeMillis());
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
               }

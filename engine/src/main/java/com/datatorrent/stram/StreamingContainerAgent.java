@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context.PortContext;
@@ -102,6 +103,7 @@ public class StreamingContainerAgent
 
   Set<PTOperator> deployOpers = Sets.newHashSet();
   Set<Integer> undeployOpers = Sets.newHashSet();
+  Map<Integer, Long> deployReasons = Maps.newHashMap();
   int deployCnt = 0;
 
   long lastHeartbeatMillis = 0;

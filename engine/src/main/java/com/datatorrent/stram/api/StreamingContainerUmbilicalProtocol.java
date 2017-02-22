@@ -180,6 +180,30 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol
       this.state = state;
     }
 
+    public long stopFailureId;
+
+    public long getStopFailureId()
+    {
+      return stopFailureId;
+    }
+
+    public void setStopFailureId(long stopFailureId)
+    {
+      this.stopFailureId = stopFailureId;
+    }
+
+    public long startFailureId;
+
+    public long getStartFailureId()
+    {
+      return startFailureId;
+    }
+
+    public void setStartFailureId(long startFailureId)
+    {
+      this.startFailureId = startFailureId;
+    }
+
     /**
      * Return the response of the request
      */

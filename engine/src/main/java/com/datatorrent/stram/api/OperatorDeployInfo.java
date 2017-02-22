@@ -63,6 +63,11 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     return contextAttributes;
   }
 
+  public long getDeployReason()
+  {
+    return deployReason;
+  }
+
   @Override
   public <T> T getValue(Attribute<T> key)
   {
@@ -313,6 +318,7 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
    */
   public AttributeMap contextAttributes;
 
+  public long deployReason;
   /**
    *
    * @return String
