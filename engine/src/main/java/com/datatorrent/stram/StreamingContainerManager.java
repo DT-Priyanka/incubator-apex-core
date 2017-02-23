@@ -1453,6 +1453,7 @@ public class StreamingContainerManager implements PlanContext
           // operator to be deployed
           if (localDeployReasons.containsKey(oper.getId())) {
             sca.deployReasons.put(oper.getId(), localDeployReasons.get(oper.getId()));
+            localDeployReasons.remove(oper.getId());
           }
           sca.deployOpers.add(oper);
         } else {
@@ -2432,9 +2433,7 @@ public class StreamingContainerManager implements PlanContext
         for (PTOperator oper : e.getValue()) {
           // operator will be deployed after it has been undeployed, if still referenced by the container
           if (oper.getState() != PTOperator.State.PENDING_UNDEPLOY) {
-            LOG.info("%% Deploying operator: " + oper.getId());
-            LOG.info("%% ContainerId: " + oper.getContainer().getExternalId());
-            LOG.info("%% restartinfo: " + restartInfo);
+            LOG.debug("Deploying operator: " + oper.getId());
             RestartInfo info = restartInfo.get(oper.getContainer().getExternalId());
             if (info != null) {
               localDeployReasons.put(oper.getId(), info.failulreId);
