@@ -35,6 +35,7 @@ public abstract class StramEvent
   private long timestamp = System.currentTimeMillis();
   private String reason;
   private LogLevel logLevel;
+  private long failureId;
 
   public abstract String getType();
 
@@ -42,6 +43,12 @@ public abstract class StramEvent
   {
     id = nextId.getAndIncrement();
     this.logLevel = logLevel;
+  }
+
+  protected StramEvent(LogLevel logLevel, long failureId)
+  {
+    this(logLevel);
+    this.failureId = failureId;
   }
 
   public long getId()
@@ -74,6 +81,16 @@ public abstract class StramEvent
     return logLevel;
   }
 
+  public long getFailureId()
+  {
+    return failureId;
+  }
+
+  public void setFailureId(long failureId)
+  {
+    this.failureId = failureId;
+  }
+
   public static enum LogLevel
   {
     TRACE,
@@ -91,6 +108,12 @@ public abstract class StramEvent
     public OperatorEvent(String operatorName, LogLevel logLevel)
     {
       super(logLevel);
+      this.operatorName = operatorName;
+    }
+
+    public OperatorEvent(String operatorName, LogLevel logLevel, long failureId)
+    {
+      super(logLevel, failureId);
       this.operatorName = operatorName;
     }
 
@@ -206,6 +229,12 @@ public abstract class StramEvent
       this.operatorId = operatorId;
     }
 
+    public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel, long failureId)
+    {
+      super(operatorName, logLevel, failureId);
+      this.operatorId = operatorId;
+    }
+
     public int getOperatorId()
     {
       return operatorId;
@@ -256,7 +285,6 @@ public abstract class StramEvent
   public static class StartOperatorEvent extends PhysicalOperatorEvent
   {
     private String containerId;
-    private long failureId;
 
     public StartOperatorEvent(String operatorName, int operatorId, String containerId, long failureId)
     {
@@ -265,9 +293,8 @@ public abstract class StramEvent
 
     public StartOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel, long failureId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, failureId);
       this.containerId = containerId;
-      this.failureId = failureId;
     }
 
     @Override
@@ -286,21 +313,11 @@ public abstract class StramEvent
       this.containerId = containerId;
     }
 
-    public long getFailureId()
-    {
-      return failureId;
-    }
-
-    public void setFailureId(long failureId)
-    {
-      this.failureId = failureId;
-    }
   }
 
   public static class StopOperatorEvent extends PhysicalOperatorEvent
   {
     private String containerId;
-    private long failureId;
 
     public StopOperatorEvent(String operatorName, int operatorId, String containerId, long failureId)
     {
@@ -309,9 +326,8 @@ public abstract class StramEvent
 
     public StopOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel, long failureId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, failureId);
       this.containerId = containerId;
-      this.failureId = failureId;
     }
 
     @Override
@@ -330,15 +346,6 @@ public abstract class StramEvent
       this.containerId = containerId;
     }
 
-    public long getFailureId()
-    {
-      return failureId;
-    }
-
-    public void setFailureId(long failureId)
-    {
-      this.failureId = failureId;
-    }
   }
 
   public static class SetPhysicalOperatorPropertyEvent extends PhysicalOperatorEvent
@@ -391,14 +398,14 @@ public abstract class StramEvent
     String containerId;
     String containerNodeId;
 
-    public StartContainerEvent(String containerId, String containerNodeId)
+    public StartContainerEvent(String containerId, String containerNodeId, long failureId)
     {
-      this(containerId, containerNodeId, LogLevel.INFO);
+      this(containerId, containerNodeId, LogLevel.INFO, failureId);
     }
 
-    public StartContainerEvent(String containerId, String containerNodeId, LogLevel logLevel)
+    public StartContainerEvent(String containerId, String containerNodeId, LogLevel logLevel, long failureId)
     {
-      super(logLevel);
+      super(logLevel, failureId);
       this.containerId = containerId;
       this.containerNodeId = containerNodeId;
     }
@@ -435,7 +442,6 @@ public abstract class StramEvent
   {
     String containerId;
     int exitStatus;
-    long failureId;
 
     public StopContainerEvent(String containerId, int exitStatus, long failureId)
     {
@@ -444,10 +450,9 @@ public abstract class StramEvent
 
     public StopContainerEvent(String containerId, int exitStatus, LogLevel logLevel, long failureId)
     {
-      super(logLevel);
+      super(logLevel, failureId);
       this.containerId = containerId;
       this.exitStatus = exitStatus;
-      this.failureId = failureId;
     }
 
     @Override
@@ -476,15 +481,6 @@ public abstract class StramEvent
       this.exitStatus = exitStatus;
     }
 
-    public long getFailureId()
-    {
-      return failureId;
-    }
-
-    public void setFailureId(long failureId)
-    {
-      this.failureId = failureId;
-    }
   }
 
   public static class ChangeLogicalPlanEvent extends StramEvent
@@ -524,7 +520,6 @@ public abstract class StramEvent
   {
     private String containerId;
     private String errorMessage;
-    private long failureId;
 
     public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, long failureId)
     {
@@ -533,10 +528,9 @@ public abstract class StramEvent
 
     public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, LogLevel logLevel, long failureId)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, failureId);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
-      this.failureId = failureId;
     }
 
     @Override
@@ -565,15 +559,6 @@ public abstract class StramEvent
       this.errorMessage = errorMessage;
     }
 
-    public long getFailureId()
-    {
-      return failureId;
-    }
-
-    public void setFailureId(long failureId)
-    {
-      this.failureId = failureId;
-    }
   }
 
   public static class ContainerErrorEvent extends StramEvent

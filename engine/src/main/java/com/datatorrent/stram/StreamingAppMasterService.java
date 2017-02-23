@@ -916,8 +916,13 @@ public class StreamingAppMasterService extends CompositeService
           // launchThread.start();
           launchContainer.run(); // communication with NMs is now async
 
+          long failureId = -1;
+          if (dnmgr.containerDeployReason.containsKey(allocatedContainer.getId().toString())) {
+            failureId = dnmgr.containerDeployReason.get(allocatedContainer.getId().toString());
+            dnmgr.containerDeployReason.remove(allocatedContainer.getId().toString());
+          }
           // record container start event
-          StramEvent ev = new StramEvent.StartContainerEvent(allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString());
+          StramEvent ev = new StramEvent.StartContainerEvent(allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), failureId);
           ev.setTimestamp(timestamp);
           dnmgr.recordEventAsync(ev);
         }

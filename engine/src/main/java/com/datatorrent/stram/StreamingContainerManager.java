@@ -1109,7 +1109,8 @@ public class StreamingContainerManager implements PlanContext
     return true;
   }
 
-  private Map<String, RestartInfo> restartInfo = new HashMap<>();
+  private Map<String, RestartInfo> restartInfo = Maps.newHashMap();
+  Map<String, Long> containerDeployReason = Maps.newHashMap();
 
   static class RestartInfo
   {
@@ -1290,6 +1291,10 @@ public class StreamingContainerManager implements PlanContext
       LOG.debug("No container matching allocated resource {}", resource);
       LOG.debug("Containers waiting for allocation {}", pendingAllocation);
       return null;
+    }
+
+    if (restartInfo.containsKey(container.getExternalId())) {
+      containerDeployReason.put(resource.containerId, restartInfo.get(container.getExternalId()).failulreId);
     }
 
     pendingAllocation.remove(container);
