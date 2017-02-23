@@ -986,10 +986,10 @@ public class StreamingAppMasterService extends CompositeService
           // also occurs when a container was released by the application but never assigned/launched
           LOG.debug("Container {} failed or killed.", containerStatus.getContainerId());
           dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
-          if (dnmgr.getRestartInfo().containsKey(containerStatus.getContainerId())) {
-            exitErrorId = dnmgr.getRestartInfo().get(containerStatus.getContainerId()).failulreId;
+          if (dnmgr.getRestartInfo().containsKey(containerStatus.getContainerId().toString())) {
+            exitErrorId = dnmgr.getRestartInfo().get(containerStatus.getContainerId().toString()).failulreId;
           }
-          //          }
+//        }
         } else {
           // container completed successfully
           numCompletedContainers.incrementAndGet();
