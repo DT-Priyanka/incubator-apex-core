@@ -105,7 +105,7 @@ public class StramLocalCluster implements Runnable, Controller
     }
 
     @Override
-    public void reportError(String containerId, int[] operators, String msg) throws IOException
+    public void reportError(String containerId, int[] operators, String msg, long failureId) throws IOException
     {
       log(containerId, msg);
     }

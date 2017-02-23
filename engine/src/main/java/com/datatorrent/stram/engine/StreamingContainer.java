@@ -320,7 +320,7 @@ public class StreamingContainer extends YarnContainerMain
       logger.error("Fatal {} in container!", (e instanceof Error) ? "Error" : "Exception", e);
       /* Report back any failures, for diagnostic purposes */
       try {
-        umbilical.reportError(childId, null, ExceptionUtils.getStackTrace(e));
+        umbilical.reportError(childId, null, ExceptionUtils.getStackTrace(e), -1);
       } catch (Exception ex) {
         logger.debug("Fail to log", ex);
       }
@@ -1455,9 +1455,10 @@ public class StreamingContainer extends YarnContainerMain
               operators = new int[]{currentdi.id};
             }
             try {
-              umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error));
+              long errorId = System.currentTimeMillis();
+              umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error), errorId);
               for (int opId : operators) {
-                unDeployReasons.put(opId, System.currentTimeMillis());//may not work
+                unDeployReasons.put(opId, errorId);//may not work
               }
             } catch (Exception e) {
               logger.debug("Fail to log", e);
@@ -1470,9 +1471,8 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Operator set {} stopped running due to an exception.", setOperators, ex);
               int[] operators = new int[]{ndi.id};
               try {
-                umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex));
                 long errorId = System.currentTimeMillis();
-                logger.info("For exception erorId: " + errorId + " operator: " + ndi.id);
+                umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex), errorId);
                 unDeployReasons.put(ndi.id, errorId);
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
@@ -1482,8 +1482,9 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Abandoning deployment of operator {} due to setup failure.", currentdi, ex);
               int[] operators = new int[]{currentdi.id};
               try {
-                umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex));
-                unDeployReasons.put(currentdi.id, System.currentTimeMillis());
+                long errorId = System.currentTimeMillis();
+                umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex), errorId);
+                unDeployReasons.put(currentdi.id, errorId);
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
               }

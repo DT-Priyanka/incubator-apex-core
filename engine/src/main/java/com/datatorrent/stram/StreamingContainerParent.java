@@ -172,7 +172,7 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   }
 
   @Override
-  public void reportError(String containerId, int[] operators, String msg) throws IOException
+  public void reportError(String containerId, int[] operators, String msg, long errorId) throws IOException
   {
     if (operators == null || operators.length == 0) {
       dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg));
@@ -180,7 +180,7 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
       for (int operator : operators) {
         OperatorInfo operatorInfo = dagManager.getOperatorInfo(operator);
         if (operatorInfo != null) {
-          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg));
+          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg, errorId));
         }
       }
     }

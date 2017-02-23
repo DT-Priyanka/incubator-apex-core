@@ -943,6 +943,7 @@ public class StreamingAppMasterService extends CompositeService
           delegationTokenManager.cancelToken(allocatedContainer.delegationToken, ugi.getUserName());
         }
         int exitStatus = containerStatus.getExitStatus();
+        long exitErrorId = -1;
         if (0 != exitStatus) {
           if (allocatedContainer != null) {
             numFailedContainers.incrementAndGet();
@@ -985,7 +986,10 @@ public class StreamingAppMasterService extends CompositeService
           // also occurs when a container was released by the application but never assigned/launched
           LOG.debug("Container {} failed or killed.", containerStatus.getContainerId());
           dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
-//          }
+          if (dnmgr.getRestartInfo().containsKey(containerStatus.getContainerId())) {
+            exitErrorId = dnmgr.getRestartInfo().get(containerStatus.getContainerId()).failulreId;
+          }
+          //          }
         } else {
           // container completed successfully
           numCompletedContainers.incrementAndGet();
@@ -1002,7 +1006,7 @@ public class StreamingAppMasterService extends CompositeService
         dnmgr.removeContainerAgent(containerIdStr);
 
         // record container stop event
-        StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus());
+        StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus(), exitErrorId);
         ev.setReason(containerStatus.getDiagnostics());
         dnmgr.recordEventAsync(ev);
       }

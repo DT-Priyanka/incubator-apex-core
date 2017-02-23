@@ -435,17 +435,19 @@ public abstract class StramEvent
   {
     String containerId;
     int exitStatus;
+    long failureId;
 
-    public StopContainerEvent(String containerId, int exitStatus)
+    public StopContainerEvent(String containerId, int exitStatus, long failureId)
     {
-      this(containerId, exitStatus, LogLevel.INFO);
+      this(containerId, exitStatus, LogLevel.INFO, failureId);
     }
 
-    public StopContainerEvent(String containerId, int exitStatus, LogLevel logLevel)
+    public StopContainerEvent(String containerId, int exitStatus, LogLevel logLevel, long failureId)
     {
       super(logLevel);
       this.containerId = containerId;
       this.exitStatus = exitStatus;
+      this.failureId = failureId;
     }
 
     @Override
@@ -474,6 +476,15 @@ public abstract class StramEvent
       this.exitStatus = exitStatus;
     }
 
+    public long getFailureId()
+    {
+      return failureId;
+    }
+
+    public void setFailureId(long failureId)
+    {
+      this.failureId = failureId;
+    }
   }
 
   public static class ChangeLogicalPlanEvent extends StramEvent
@@ -513,17 +524,19 @@ public abstract class StramEvent
   {
     private String containerId;
     private String errorMessage;
+    private long failureId;
 
-    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage)
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, long failureId)
     {
-      this(operatorName, operatorId, containerId, errorMessage, LogLevel.ERROR);
+      this(operatorName, operatorId, containerId, errorMessage, LogLevel.ERROR, failureId);
     }
 
-    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, LogLevel logLevel)
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage, LogLevel logLevel, long failureId)
     {
       super(operatorName, operatorId, logLevel);
       this.containerId = containerId;
       this.errorMessage = errorMessage;
+      this.failureId = failureId;
     }
 
     @Override
@@ -552,6 +565,15 @@ public abstract class StramEvent
       this.errorMessage = errorMessage;
     }
 
+    public long getFailureId()
+    {
+      return failureId;
+    }
+
+    public void setFailureId(long failureId)
+    {
+      this.failureId = failureId;
+    }
   }
 
   public static class ContainerErrorEvent extends StramEvent

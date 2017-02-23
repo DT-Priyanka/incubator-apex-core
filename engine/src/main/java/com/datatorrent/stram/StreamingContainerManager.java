@@ -1124,6 +1124,11 @@ public class StreamingContainerManager implements PlanContext
 
   }
 
+  public Map<String, RestartInfo> getRestartInfo()
+  {
+    return restartInfo;
+  }
+
   /**
    * Schedule container restart. Called by Stram after a container was terminated
    * and requires recovery (killed externally, or after heartbeat timeout). <br>
