@@ -77,6 +77,17 @@ import com.datatorrent.stram.webapp.ContainerInfo;
 public class StreamingContainerAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerAgent.class);
+  private DeploymentGroupEvent deployGroupEvent;
+
+  public DeploymentGroupEvent getDeployGroupEvent()
+  {
+    return deployGroupEvent;
+  }
+
+  public void setDeployGroupEvent(DeploymentGroupEvent deployGroupEvent)
+  {
+    this.deployGroupEvent = deployGroupEvent;
+  }
 
   public static class ContainerStartRequest
   {

@@ -119,6 +119,7 @@ import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.common.util.NumberAggregate;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.DeploymentGroupEvent.RootCause;
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.AppDataSource;
@@ -1109,6 +1110,7 @@ public class StreamingContainerManager implements PlanContext
     return true;
   }
 
+  Map<String, DeploymentGroupEvent> failedContainersGroupInfo = Maps.newHashMap();
   /**
    * Schedule container restart. Called by Stram after a container was terminated
    * and requires recovery (killed externally, or after heartbeat timeout). <br>
@@ -1145,6 +1147,37 @@ public class StreamingContainerManager implements PlanContext
     // redeploy cycle for all affected operators
     LOG.info("Affected operators {}", ctx.visited);
     deploy(Collections.<PTContainer>emptySet(), ctx.visited, Sets.newHashSet(cs.container), ctx.visited);
+
+    DeploymentGroupEvent ev = new DeploymentGroupEvent();
+    if (failedContainersGroupInfo.containsKey(containerId)) {
+      ev = failedContainersGroupInfo.get(containerId);
+    } else {
+      ev.groupId = System.currentTimeMillis();
+      ev.rootCause = RootCause.CONTAINER_FAILURE;
+      failedContainersGroupInfo.put(containerId, ev);
+    }
+    Set<PTContainer> affectedContainers = Sets.newHashSet();
+    for (PTOperator myop : ctx.visited) {
+      affectedContainers.add(myop.getContainer());
+    }
+
+    for (PTContainer affectedContainer : affectedContainers) {
+      StreamingContainerAgent agent = containers.get(affectedContainer.getExternalId());
+      if (agent != null) {
+        DeploymentGroupEvent myev = new DeploymentGroupEvent();
+        myev.groupId = ev.groupId;
+        myev.rootCause = ev.rootCause;
+        for (PTOperator oper : affectedContainer.getOperators()) {
+          if (ctx.visited.contains(oper)) {
+            myev.operatorsToStop.add(oper.getId());
+          }
+        }
+        agent.setDeployGroupEvent(myev);
+      } else {
+        LOG.info("%% agent null for: " + affectedContainer);
+      }
+    }
+
   }
 
   /**
@@ -1183,7 +1216,7 @@ public class StreamingContainerManager implements PlanContext
     if (containerAgent != null) {
       // record operator stop for this container
       for (PTOperator oper : containerAgent.container.getOperators()) {
-        StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerId);
+        StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerId, containerAgent.getDeployGroupEvent().groupId);
         recordEventAsync(ev);
       }
       containerAgent.container.setFinishedTime(System.currentTimeMillis());
@@ -1258,11 +1291,17 @@ public class StreamingContainerManager implements PlanContext
       return null;
     }
 
+    LOG.info("%% Restarting container from " + container.getExternalId() + " to: " + resource.containerId);
     pendingAllocation.remove(container);
     container.setState(PTContainer.State.ALLOCATED);
     if (container.getExternalId() != null) {
       LOG.info("Removing container agent {}", container.getExternalId());
       this.containers.remove(container.getExternalId());
+    }
+    DeploymentGroupEvent ev = null;
+    if (failedContainersGroupInfo.containsKey(container.getExternalId())) {
+      ev = failedContainersGroupInfo.get(container.getExternalId());
+//      failedContainersGroupInfo.remove(container.getExternalId());
     }
     container.setExternalId(resource.containerId);
     container.host = resource.host;
@@ -1279,6 +1318,7 @@ public class StreamingContainerManager implements PlanContext
     writeJournal(container.getSetContainerState());
 
     StreamingContainerAgent sca = new StreamingContainerAgent(container, newStreamingContainerContext(container), this);
+    sca.setDeployGroupEvent(ev);
     containers.put(resource.containerId, sca);
     LOG.debug("Assigned container {} priority {}", resource.containerId, resource.priority);
     return sca;
@@ -1358,14 +1398,32 @@ public class StreamingContainerManager implements PlanContext
               }
               sca.undeployOpers.add(oper.getId());
               slowestUpstreamOp.remove(oper);
+              long groupId = 0;
+              if (sca.getDeployGroupEvent().operatorsToStop.contains(oper.getId())) {
+                groupId = sca.getDeployGroupEvent().groupId;
+                sca.getDeployGroupEvent().operatorsToStop.remove(oper.getId());
+                sca.getDeployGroupEvent().operatorsToStart.add(oper.getId());
+              }
               // record operator stop event
-              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), groupId));
               break;
             case FAILED:
               processOperatorFailure(oper);
               sca.undeployOpers.add(oper.getId());
               slowestUpstreamOp.remove(oper);
-              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+              long groupId1 = 0;
+              if (sca.getDeployGroupEvent() == null) {
+                DeploymentGroupEvent ev = new DeploymentGroupEvent();
+                ev.groupId = System.currentTimeMillis();
+                sca.setDeployGroupEvent(ev);
+                failedContainersGroupInfo.put(oper.getContainer().getExternalId(), ev);
+              }
+              if (sca.getDeployGroupEvent().operatorsToStop.contains(oper.getId())) {
+                groupId1 = sca.getDeployGroupEvent().groupId;
+                sca.getDeployGroupEvent().operatorsToStop.remove(oper.getId());
+                sca.getDeployGroupEvent().operatorsToStart.add(oper.getId());
+              }
+              recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), groupId1));
               break;
             case ACTIVE:
             default:
@@ -1375,8 +1433,14 @@ public class StreamingContainerManager implements PlanContext
         break;
       case PENDING_UNDEPLOY:
         if (ds == null) {
+          long groupId1 = 0;
+          if (sca.getDeployGroupEvent().operatorsToStop.contains(oper.getId())) {
+            groupId1 = sca.getDeployGroupEvent().groupId;
+            sca.getDeployGroupEvent().operatorsToStop.remove(new Integer(oper.getId()));
+            sca.getDeployGroupEvent().operatorsToStart.add(oper.getId());
+          }
           // operator no longer deployed in container
-          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), groupId1));
           oper.setState(State.PENDING_DEPLOY);
           sca.deployOpers.add(oper);
         } else {
@@ -1396,7 +1460,13 @@ public class StreamingContainerManager implements PlanContext
           oper.setState(PTOperator.State.ACTIVE);
           oper.stats.lastHeartbeat = null; // reset on redeploy
           oper.stats.lastWindowIdChangeTms = clock.getTime();
-          recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId()));
+          long groupId = 0;
+          if (sca.getDeployGroupEvent().operatorsToStart.contains(oper.getId())) {
+            groupId = sca.getDeployGroupEvent().groupId;
+            sca.getDeployGroupEvent().operatorsToStart.remove(new Integer(oper.getId()));
+            sca.getDeployGroupEvent().operatorsToStart.add(oper.getId());
+          }
+          recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId(), groupId));
         }
         break;
       default:
@@ -1405,7 +1475,7 @@ public class StreamingContainerManager implements PlanContext
           // operator was removed and needs to be undeployed from container
           sca.undeployOpers.add(oper.getId());
           slowestUpstreamOp.remove(oper);
-          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), 0));
         }
     }
   }

@@ -35,6 +35,7 @@ public abstract class StramEvent
   private long timestamp = System.currentTimeMillis();
   private String reason;
   private LogLevel logLevel;
+  private long eventGroupId;
 
   public abstract String getType();
 
@@ -42,6 +43,13 @@ public abstract class StramEvent
   {
     id = nextId.getAndIncrement();
     this.logLevel = logLevel;
+  }
+
+  protected StramEvent(LogLevel logLevel, long eventGroupId)
+  {
+    id = nextId.getAndIncrement();
+    this.logLevel = logLevel;
+    this.eventGroupId = eventGroupId;
   }
 
   public long getId()
@@ -74,6 +82,16 @@ public abstract class StramEvent
     return logLevel;
   }
 
+  public long getEventGroupId()
+  {
+    return eventGroupId;
+  }
+
+  public void setEventGroupId(long eventGroupId)
+  {
+    this.eventGroupId = eventGroupId;
+  }
+
   public static enum LogLevel
   {
     TRACE,
@@ -91,6 +109,12 @@ public abstract class StramEvent
     public OperatorEvent(String operatorName, LogLevel logLevel)
     {
       super(logLevel);
+      this.operatorName = operatorName;
+    }
+
+    public OperatorEvent(String operatorName, LogLevel logLevel, long eventGroupId)
+    {
+      super(logLevel, eventGroupId);
       this.operatorName = operatorName;
     }
 
@@ -206,6 +230,12 @@ public abstract class StramEvent
       this.operatorId = operatorId;
     }
 
+    public PhysicalOperatorEvent(String operatorName, int operatorId, LogLevel logLevel, long eventGroupId)
+    {
+      super(operatorName, logLevel, eventGroupId);
+      this.operatorId = operatorId;
+    }
+
     public int getOperatorId()
     {
       return operatorId;
@@ -257,12 +287,12 @@ public abstract class StramEvent
   {
     private String containerId;
 
-    public StartOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StartOperatorEvent(String operatorName, int operatorId, String containerId, long groupId)
     {
-      this(operatorName, operatorId, containerId, LogLevel.INFO);
+      this(operatorName, operatorId, containerId, LogLevel.INFO, groupId);
     }
 
-    public StartOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel)
+    public StartOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel, long groupId)
     {
       super(operatorName, operatorId, logLevel);
       this.containerId = containerId;
@@ -290,14 +320,14 @@ public abstract class StramEvent
   {
     private String containerId;
 
-    public StopOperatorEvent(String operatorName, int operatorId, String containerId)
+    public StopOperatorEvent(String operatorName, int operatorId, String containerId, long eventGroupId)
     {
-      this(operatorName, operatorId, containerId, LogLevel.WARN);
+      this(operatorName, operatorId, containerId, eventGroupId, LogLevel.WARN);
     }
 
-    public StopOperatorEvent(String operatorName, int operatorId, String containerId, LogLevel logLevel)
+    public StopOperatorEvent(String operatorName, int operatorId, String containerId,  long eventGroupId, LogLevel logLevel)
     {
-      super(operatorName, operatorId, logLevel);
+      super(operatorName, operatorId, logLevel, eventGroupId);
       this.containerId = containerId;
     }
 
