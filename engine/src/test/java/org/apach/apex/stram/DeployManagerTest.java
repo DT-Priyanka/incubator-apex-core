@@ -142,12 +142,12 @@ public class DeployManagerTest
   @Test
   public void testRemoveProcessedDeployRequest()
   {
-    underTest.addOrModifyDeployRequest(affectedContainerId, ImmutableSet.of(oper1));
+    String failedContainerId = "container_1";
+    underTest.addOrModifyDeployRequest(failedContainerId, ImmutableSet.of(oper1));
     Assert.assertEquals(1, underTest.getDeployRequests().size());
     underTest.moveOperatorFromUndeployListToDeployList(oper1); //move from updeploy to deploy list
-    underTest.removeProcessedOperatorAndRequest(oper1);
+    underTest.removeProcessedOperatorAndRequests(oper1);
     Assert.assertEquals(0, underTest.getDeployRequests().size());
-
   }
 
   @After
