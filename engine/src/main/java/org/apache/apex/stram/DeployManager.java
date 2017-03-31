@@ -19,11 +19,13 @@
 package org.apache.apex.stram;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.apex.stram.DeployRequest.EventGroupId;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.stram.plan.physical.PTOperator;
 
@@ -135,10 +137,10 @@ public class DeployManager
    * if it has no more pending operators to deploy i.e. request has been processed.
    * @param opererator
    */
-  public void removeProcessedOperatorAndRequest(PTOperator oper)
+  public void removeProcessedOperatorAndRequests(PTOperator oper)
   {
     removeOperatorFromDeployRequest(oper.getId());
-    removeProcessedDeployRequest(oper.getContainer().getExternalId());
+    removeProcessedDeployRequests(oper.getContainer().getExternalId());
   }
 
   /*
@@ -155,18 +157,21 @@ public class DeployManager
   }
 
   /*
-   * Remove deployRequest from StrAM if it has no more pending operators to deploy
+   * Remove deployRequests from StrAM if it has no more pending operators to deploy i.e. requests has been fully processed
    * @param containerId
    * @return isRemoved
    */
-  private boolean removeProcessedDeployRequest(String containerId)
+  private void removeProcessedDeployRequests(String containerId)
   {
-    if (deployRequests.containsKey((containerId))) {
-      if (deployRequests.get(containerId).getOperatorsToDeploy().size() == 0) {
-        return deployRequests.remove(containerId) == null ? false : true;
+    Set<String> removableRequestIds = Sets.newHashSet();
+    for (Entry<String, DeployRequest> entry : deployRequests.entrySet()) {
+      if (entry.getValue().getOperatorsToDeploy().size() == 0) {
+        removableRequestIds.add(entry.getKey());
       }
     }
-    return false;
+    for (String removableRequestId : removableRequestIds) {
+      deployRequests.remove(removableRequestId);
+    }
   }
 
   /**

@@ -1429,7 +1429,7 @@ public class StreamingContainerManager implements PlanContext
           oper.stats.lastHeartbeat = null; // reset on redeploy
           oper.stats.lastWindowIdChangeTms = clock.getTime();
           recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId(),  ohb.getDeployGroupId()));
-          deployManager.removeProcessedOperatorAndRequest(oper);
+          deployManager.removeProcessedOperatorAndRequests(oper);
         }
         break;
       default:
