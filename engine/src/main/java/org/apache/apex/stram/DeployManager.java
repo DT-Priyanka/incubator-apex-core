@@ -133,14 +133,14 @@ public class DeployManager
   }
 
   /**
-   * Removes operator from deploy request. Also removes deployRequest from StrAM
-   * if it has no more pending operators to deploy i.e. request has been processed.
+   * Removes operator from deploy request. Also removes processed deployRequests from StrAM.
+   * A deployRequests is fully processed if it has no more pending operators to deploy.
    * @param opererator
    */
   public void removeProcessedOperatorAndRequests(PTOperator oper)
   {
     removeOperatorFromDeployRequest(oper.getId());
-    removeProcessedDeployRequests(oper.getContainer().getExternalId());
+    removeProcessedDeployRequests();
   }
 
   /*
@@ -157,11 +157,10 @@ public class DeployManager
   }
 
   /*
-   * Remove deployRequests from StrAM if it has no more pending operators to deploy i.e. requests has been fully processed
-   * @param containerId
+   * Remove all the fully processed deployRequests. A deployRequests is fully processed if it has no more pending operators to deploy
    * @return isRemoved
    */
-  private void removeProcessedDeployRequests(String containerId)
+  private void removeProcessedDeployRequests()
   {
     Set<String> removableRequestIds = Sets.newHashSet();
     for (Entry<String, DeployRequest> entry : deployRequests.entrySet()) {
