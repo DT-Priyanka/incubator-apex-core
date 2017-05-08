@@ -32,11 +32,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.stram.DeployRequest.EventGroupId;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context.PortContext;
@@ -102,7 +100,7 @@ public class StreamingContainerAgent
   ShutdownType shutdownRequest = null;
   boolean stackTraceRequested = false;
 
-  Map<PTOperator, EventGroupId> deployOpers = Maps.newHashMap();
+  Set<PTOperator> deployOpers = Sets.newHashSet();
   Set<Integer> undeployOpers = Sets.newHashSet();
   int deployCnt = 0;
 
@@ -439,9 +437,6 @@ public class StreamingContainerAgent
     }
     if (oper.isOperatorStateLess()) {
       ndi.contextAttributes.put(OperatorContext.STATELESS, true);
-    }
-    if (deployOpers.get(oper) != null) {
-      ndi.deployGroupId = deployOpers.get(oper);
     }
     return ndi;
   }

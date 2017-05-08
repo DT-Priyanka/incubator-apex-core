@@ -20,11 +20,14 @@ package com.datatorrent.stram;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.log.LogFileInformation;
+import org.apache.apex.stram.DeployManager;
+import org.apache.apex.stram.DeployRequest;
 import org.apache.apex.stram.DeployRequest.EventGroupId;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
@@ -174,9 +177,10 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   }
 
   @Override
-  public void reportError(String containerId, int[] operators, String msg, LogFileInformation logFileInfo, EventGroupId groupId)
+  public void reportError(String containerId, int[] operators, String msg, LogFileInformation logFileInfo)
       throws IOException
   {
+    EventGroupId groupId = getGroupIdForNewDeployRequest(containerId);
     if (operators == null || operators.length == 0) {
       dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg, logFileInfo, groupId));
     } else {
@@ -189,6 +193,14 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
       }
     }
     log(containerId, msg);
+  }
+
+  //create new group the deploy request, request data will be populated when sub-dag restart happens
+  private EventGroupId getGroupIdForNewDeployRequest(String containerId)
+  {
+    DeployManager deployManager = DeployManager.getDeployManagerInstance();
+    DeployRequest deployRequest = deployManager.addOrModifyDeployRequest(containerId, Collections.EMPTY_SET);
+    return deployRequest.getEventGroupId();
   }
 
   @Override

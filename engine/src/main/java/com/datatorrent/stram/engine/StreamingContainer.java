@@ -43,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.log.LogFileInformation;
-import org.apache.apex.stram.DeployRequest.EventGroupId;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -54,8 +53,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.log4j.LogManager;
-
-import com.google.common.collect.Maps;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Component;
@@ -167,8 +164,6 @@ public class StreamingContainer extends YarnContainerMain
   private final MBassador<ContainerEvent> eventBus; // event bus for publishing container events
   HashSet<Component<ContainerContext>> components;
   private RequestFactory requestFactory;
-  private Map<Integer, EventGroupId> deployGroupIds = Maps.newHashMap();
-  private Map<Integer, EventGroupId> unDeployGroupIds = Maps.newHashMap();
 
   static {
     try {
@@ -325,7 +320,7 @@ public class StreamingContainer extends YarnContainerMain
       logger.error("Fatal {} in container!", (e instanceof Error) ? "Error" : "Exception", e);
       /* Report back any failures, for diagnostic purposes */
       try {
-        umbilical.reportError(childId, null, ExceptionUtils.getStackTrace(e), logFileInfo, EventGroupId.newEventGroupId("000000"));
+        umbilical.reportError(childId, null, ExceptionUtils.getStackTrace(e), logFileInfo);
       } catch (Exception ex) {
         logger.debug("Fail to log", ex);
       }
@@ -678,14 +673,8 @@ public class StreamingContainer extends YarnContainerMain
 
           if (context.getThread() == null || context.getThread().getState() != Thread.State.TERMINATED) {
             hb.setState(DeployState.ACTIVE);
-            //send deploy event groupId to StrAM in heartbeat
-            if (deployGroupIds.containsKey(hb.nodeId)) {
-              hb.setDeployGroupId(deployGroupIds.remove(hb.nodeId));
-            }
           } else if (failedNodes.contains(hb.nodeId)) {
             hb.setState(DeployState.FAILED);
-            //send undeploy event groupId to StrAM in heartbeat
-            hb.setUndeployGroupId(unDeployGroupIds.get(hb.nodeId));
           } else {
             logger.debug("Reporting SHUTDOWN state because thread is {} and failedNodes is {}", context.getThread(), failedNodes);
             hb.setState(DeployState.SHUTDOWN);
@@ -819,7 +808,6 @@ public class StreamingContainer extends YarnContainerMain
       logger.info("Undeploy request: {}", rsp.undeployRequest);
       processNodeRequests(false);
       undeploy(rsp.undeployRequest);
-      unDeployGroupIds.clear();
     }
 
     if (rsp.shutdown != null) {
@@ -909,7 +897,6 @@ public class StreamingContainer extends YarnContainerMain
     HashMap<Integer, OperatorDeployInfo> operatorMap = new HashMap<>(nodeList.size());
     for (OperatorDeployInfo o : nodeList) {
       operatorMap.put(o.id, o);
-      deployGroupIds.put(o.getId(), o.deployGroupId);
     }
     activate(operatorMap, newStreams);
   }
@@ -1455,7 +1442,7 @@ public class StreamingContainer extends YarnContainerMain
               operators = new int[]{currentdi.id};
             }
             try {
-              umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error), logFileInfo, generateAndSetUndeployGroupId(operators));
+              umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error), logFileInfo);
             } catch (Exception e) {
               logger.debug("Fail to log", e);
             } finally {
@@ -1469,7 +1456,7 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Operator set {} stopped running due to an exception.", setOperators, ex);
               int[] operators = new int[]{ndi.id};
               try {
-                umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex), logFileInfo, generateAndSetUndeployGroupId(operators));
+                umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex), logFileInfo);
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
               }
@@ -1478,7 +1465,7 @@ public class StreamingContainer extends YarnContainerMain
               logger.error("Abandoning deployment of operator {} due to setup failure.", currentdi, ex);
               int[] operators = new int[]{currentdi.id};
               try {
-                umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex), logFileInfo, generateAndSetUndeployGroupId(operators));
+                umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex), logFileInfo);
               } catch (Exception e) {
                 logger.debug("Fail to log", e);
               }
@@ -1527,20 +1514,6 @@ public class StreamingContainer extends YarnContainerMain
         wg.activate(null);
       }
     }
-  }
-
-  /*
-   * Generates groupId for operator error event.
-   * The events generated by downstream operators redeployment should use this groupId
-   */
-  private EventGroupId generateAndSetUndeployGroupId(int[] operators)
-  {
-    String containerId = getContainerId();
-    EventGroupId groupId = EventGroupId.newEventGroupId(containerId.substring(containerId.lastIndexOf("_") + 1));
-    for (int operatorId : operators) {
-      unDeployGroupIds.put(operatorId, groupId);
-    }
-    return groupId;
   }
 
   private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, OperatorDeployInfo ndi)

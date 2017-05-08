@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.apex.stram.DeployRequest.EventGroupId;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -62,11 +61,6 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
   public AttributeMap getAttributes()
   {
     return contextAttributes;
-  }
-
-  public EventGroupId getDeployGroupId()
-  {
-    return deployGroupId;
   }
 
   @Override
@@ -320,10 +314,6 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
   public AttributeMap contextAttributes;
 
   /**
-   * Operator deploy reason groupId (event group id)
-   */
-  public EventGroupId deployGroupId;
-  /**
    *
    * @return String
    */
@@ -336,7 +326,6 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
         .append("checkpoint", this.checkpoint)
         .append("inputs", this.inputs)
         .append("outputs", this.outputs)
-        .append("deployGroupId", this.deployGroupId)
         .toString();
   }
 

@@ -31,7 +31,7 @@ public class DeployRequestTest
   @Before
   public void setup()
   {
-    underTest = new DeployRequest("000001");
+    underTest = new DeployRequest();
   }
 
   @Test

@@ -1164,6 +1164,7 @@ public class StreamingContainerManager implements PlanContext
     includeLocalUpstreamOperators(ctx);
 
     deployManager.addOrModifyDeployRequest(containerId, ctx.visited);
+    deployManager.removeProcessedDeployRequests();
 
     // redeploy cycle for all affected operators
     LOG.info("Affected operators {}", ctx.visited);
@@ -1363,7 +1364,7 @@ public class StreamingContainerManager implements PlanContext
         //LOG.warn("status out of sync {} expected {} remote {}", oper, oper.getState(), ds);
         // operator expected active, check remote status
         if (ds == null) {
-          sca.deployOpers.put(oper, null);
+          sca.deployOpers.add(oper);
         } else {
           switch (ds) {
             case SHUTDOWN:
@@ -1392,8 +1393,7 @@ public class StreamingContainerManager implements PlanContext
               sca.undeployOpers.add(oper.getId());
               slowestUpstreamOp.remove(oper);
 
-              EventGroupId groupId = ohb.getUndeployGroupId();
-              deployManager.populateDeployInfoForFailedOperator(oper, groupId);
+              EventGroupId groupId = deployManager.getEventGroupIdForContainer(oper.getContainer().getExternalId());
               recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(),
                   oper.getContainer().getExternalId(), groupId));
               break;
@@ -1409,7 +1409,7 @@ public class StreamingContainerManager implements PlanContext
           // operator no longer deployed in container
           recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId(), groupId));
           oper.setState(State.PENDING_DEPLOY);
-          sca.deployOpers.put(oper, groupId);
+          sca.deployOpers.add(oper);
         } else {
           // operator is currently deployed, request undeploy
           sca.undeployOpers.add(oper.getId());
@@ -1419,7 +1419,7 @@ public class StreamingContainerManager implements PlanContext
       case PENDING_DEPLOY:
         if (ds == null) {
           // operator to be deployed
-          sca.deployOpers.put(oper, deployManager.getEventGroupIdForOperatorToDeploy(oper.getId()));
+          sca.deployOpers.add(oper);
         } else {
           // operator was deployed in container
           PTContainer container = oper.getContainer();
@@ -1427,8 +1427,9 @@ public class StreamingContainerManager implements PlanContext
           oper.setState(PTOperator.State.ACTIVE);
           oper.stats.lastHeartbeat = null; // reset on redeploy
           oper.stats.lastWindowIdChangeTms = clock.getTime();
-          recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId(),  ohb.getDeployGroupId()));
-          deployManager.removeProcessedOperatorAndRequest(oper);
+          EventGroupId groupId = deployManager.getEventGroupIdForOperatorToDeploy(oper.getId());
+          recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId(),  groupId));
+          deployManager.removeOperatorFromDeployRequest(oper.getId());
         }
         break;
       default:
@@ -1945,7 +1946,7 @@ public class StreamingContainerManager implements PlanContext
       return rsp;
     }
 
-    Set<PTOperator> deployOperators = sca.deployOpers.keySet();
+    Set<PTOperator> deployOperators = sca.deployOpers;
     if (!deployOperators.isEmpty()) {
       // deploy once all containers are running and no undeploy operations are pending.
       for (PTContainer c : getPhysicalPlan().getContainers()) {

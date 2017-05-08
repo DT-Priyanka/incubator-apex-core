@@ -27,7 +27,6 @@ import org.mockito.MockitoAnnotations;
 
 import org.apache.apex.stram.DeployManager;
 import org.apache.apex.stram.DeployRequest;
-import org.apache.apex.stram.DeployRequest.EventGroupId;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -118,16 +117,6 @@ public class DeployManagerTest
   }
 
   @Test
-  public void testPopulateDeployInfoForFailedOperator()
-  {
-    EventGroupId groupId = EventGroupId.newEventGroupId("000001");
-    underTest.populateDeployInfoForFailedOperator(oper1, groupId);
-    DeployRequest request = underTest.getDeployRequest(oper1.getContainer().getExternalId());
-
-    Assert.assertEquals(groupId, request.getEventGroupId());
-  }
-
-  @Test
   public void testAddNewContainerToDeployRequest()
   {
     String groupLeaderContainerId = "container_1";
@@ -145,7 +134,8 @@ public class DeployManagerTest
     underTest.addOrModifyDeployRequest(affectedContainerId, ImmutableSet.of(oper1));
     Assert.assertEquals(1, underTest.getDeployRequests().size());
     underTest.moveOperatorFromUndeployListToDeployList(oper1); //move from updeploy to deploy list
-    underTest.removeProcessedOperatorAndRequest(oper1);
+    underTest.removeOperatorFromDeployRequest(oper1.getId());
+    underTest.removeProcessedDeployRequests();
     Assert.assertEquals(0, underTest.getDeployRequests().size());
 
   }

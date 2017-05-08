@@ -19,7 +19,11 @@
 package org.apache.apex.stram;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.apex.stram.DeployRequest.EventGroupId;
 
@@ -65,7 +69,7 @@ public class DeployManager
    * Returns deploy/undeploy group Id for container
    * @param containerId
    * @return groupId <br/>
-   *         <b>Note:</b> groupId 0 indicates and indipendent event, with no
+   *         <b>Note:</b> groupId 0 indicates and independent event, with no
    *         group
    */
   public EventGroupId getEventGroupIdForContainer(String containerId)
@@ -131,20 +135,9 @@ public class DeployManager
   }
 
   /**
-   * Removes operator from deploy request. Also removes deployRequest from StrAM
-   * if it has no more pending operators to deploy i.e. request has been processed.
-   * @param opererator
-   */
-  public void removeProcessedOperatorAndRequest(PTOperator oper)
-  {
-    removeOperatorFromDeployRequest(oper.getId());
-    removeProcessedDeployRequest(oper.getContainer().getExternalId());
-  }
-
-  /*
    * Removes operator from deploy request
    */
-  private boolean removeOperatorFromDeployRequest(int operatorId)
+  public boolean removeOperatorFromDeployRequest(int operatorId)
   {
     for (DeployRequest request : getDeployRequests().values()) {
       if (request.getOperatorsToDeploy().contains((operatorId))) {
@@ -154,19 +147,20 @@ public class DeployManager
     return false;
   }
 
-  /*
+  /**
    * Remove deployRequest from StrAM if it has no more pending operators to deploy
    * @param containerId
-   * @return isRemoved
    */
-  private boolean removeProcessedDeployRequest(String containerId)
+  public void removeProcessedDeployRequests()
   {
-    if (deployRequests.containsKey((containerId))) {
-      if (deployRequests.get(containerId).getOperatorsToDeploy().size() == 0) {
-        return deployRequests.remove(containerId) == null ? false : true;
+    for (Entry<String, DeployRequest> request : deployRequests.entrySet()) {
+      if (request.getValue().getOperatorsToDeploy().size() == 0
+          && request.getValue().getOperatorsToUndeploy().size() == 0) {
+        LOG.info("Removing for :" + request.getKey());
+        deployRequests.remove(request.getKey());
       }
     }
-    return false;
+
   }
 
   /**
@@ -177,34 +171,18 @@ public class DeployManager
    * @param containerId
    * @param affectedOperators
    */
-  public void addOrModifyDeployRequest(String containerId, Set<PTOperator> affectedOperators)
+  public DeployRequest addOrModifyDeployRequest(String containerId, Set<PTOperator> affectedOperators)
   {
     DeployRequest request = deployRequests.get(containerId);
     if (request == null) {
-      request = new DeployRequest(containerId.substring(containerId.lastIndexOf("_") + 1));
+      request = new DeployRequest();
       deployRequests.put(containerId, request);
     }
     for (PTOperator oper : affectedOperators) {
       request.addOperatorToUndeploy(oper.getId());
       request.addAffectedContainer(oper.getContainer().getExternalId());
     }
-  }
-
-  /**
-   * Save deploy/undeploy information of failed Operator at StrAM which can be
-   * further used when downstream oeprators are redeployed
-   * @param opererator
-   * @param groupId
-   */
-  public void populateDeployInfoForFailedOperator(PTOperator oper, EventGroupId groupId)
-  {
-    DeployRequest request = new DeployRequest(groupId);
-    String containerId = oper.getContainer().getExternalId();
-    if (deployRequests.containsKey(containerId)) {
-      request = deployRequests.get(containerId);
-    }
-    request.addOperatorToDeploy(oper.getId());
-    deployRequests.put(containerId, request);
+    return request;
   }
 
   /**
@@ -250,4 +228,5 @@ public class DeployManager
     deployRequests.clear();
   }
 
+  private static final Logger LOG = LoggerFactory.getLogger(DeployManager.class);
 }

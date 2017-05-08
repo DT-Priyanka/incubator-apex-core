@@ -19,6 +19,7 @@
 package org.apache.apex.stram;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.collect.Sets;
 
@@ -31,9 +32,9 @@ public class DeployRequest
   private Set<Integer> operatorsToUndeploy = Sets.newHashSet();
   private Set<String> affectedContainers = Sets.newHashSet();
 
-  public DeployRequest(String containerId)
+  public DeployRequest()
   {
-    eventGroupId = EventGroupId.newEventGroupId(containerId);
+    eventGroupId = EventGroupId.newEventGroupId();
   }
 
   public DeployRequest(EventGroupId groupId)
@@ -132,12 +133,13 @@ public class DeployRequest
   public static class EventGroupId extends AbstractWritableAdapter
   {
     private static final long serialVersionUID = 1L;
-    public String groupId;
+    private static final AtomicInteger idSequence = new AtomicInteger();
+    public int groupId;
 
-    public static EventGroupId newEventGroupId(String containerId)
+    public static EventGroupId newEventGroupId()
     {
       EventGroupId id = new EventGroupId();
-      id.groupId = containerId + "_" + System.currentTimeMillis();
+      id.groupId = idSequence.incrementAndGet();
       return id;
     }
 
@@ -146,7 +148,7 @@ public class DeployRequest
     {
       final int prime = 31;
       int result = 1;
-      result = prime * result + ((groupId == null) ? 0 : groupId.hashCode());
+      result = prime * result + groupId;
       return result;
     }
 
@@ -163,11 +165,7 @@ public class DeployRequest
         return false;
       }
       EventGroupId other = (EventGroupId)obj;
-      if (groupId == null) {
-        if (other.groupId != null) {
-          return false;
-        }
-      } else if (!groupId.equals(other.groupId)) {
+      if (groupId != other.groupId) {
         return false;
       }
       return true;
@@ -176,7 +174,8 @@ public class DeployRequest
     @Override
     public String toString()
     {
-      return groupId;
+      return "EventGroupId [groupId=" + groupId + "]";
     }
+
   }
 }
